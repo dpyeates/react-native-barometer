@@ -1,0 +1,40 @@
+{
+  "name": "react-native-barometer",
+  "title": "React Native Barometer",
+  "version": "1.0.0",
+  "description": "Obtain barometric and altitude readings for both Android and iOS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dpyeates/react-native-barometer.git",
+    "baseUrl": "https://github.com/dpyeates/react-native-barometer"
+  },
+  "keywords": [
+    "react-native",
+    "pressure",
+    "altitude",
+    "vertical speed",
+    "barometer"
+  ],
+  "author": {
+    "name": "Darren Yeates",
+    "email": "apps@sensorworks.co.uk"
+  },
+  "bugs": {
+    "url": "https://github.com/dpyeates/react-native-barometer/issues"
+  },
+  "license": "MIT",
+  "licenseFilename": "LICENSE",
+  "readmeFilename": "README.md",
+  "peerDependencies": {
+    "react": "^16.8.1",
+    "react-native": ">=0.59.0-rc.0 <1.0.x"
+  },
+  "devDependencies": {
+    "react": "^16.8.3",
+    "react-native": "^0.59.10"
+  }
+}
