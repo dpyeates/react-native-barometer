@@ -17,6 +17,6 @@ public class RNBarometerPackage implements ReactPackage {
   }
   @Override
   public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
-    return Arrays.<NativeModule>asList(new BarometerModule(reactContext));
+    return Arrays.<NativeModule>asList(new RNBarometerModule(reactContext));
   }
 }

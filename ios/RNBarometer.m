@@ -7,6 +7,8 @@
 #import <React/RCTEventDispatcher.h>
 #import <React/RCTLog.h>
 
+const float STANDARD_ATMOSPHERE = 1013.25;
+
 @implementation RNBarometer
 
 RCT_EXPORT_MODULE()
@@ -15,10 +17,11 @@ RCT_EXPORT_MODULE()
     self = [super init];
     if (self) {
         self->altimeter = [[CMAltimeter alloc] init];
+        self->isSupported = [CMAltimeter isRelativeAltitudeAvailable];
         self->altimeterQueue = [[NSOperationQueue alloc] init];
         [self->altimeterQueue setName:@"DeviceAltitude"];
         [self->altimeterQueue setMaxConcurrentOperationCount:1];
-        self->localPressurehPa = PRESSURE_STANDARD_ATMOSPHERE;
+        self->localPressurehPa = STANDARD_ATMOSPHERE;
         self->rawPressure = 0;
         self->altitudeASL = 0;
         self->lastSampleTime = 0;
@@ -42,43 +45,44 @@ RCT_EXPORT_MODULE()
 RCT_REMAP_METHOD(isSupported,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject) {
-	resolve([CMAltimeter isRelativeAltitudeAvailable] ? @YES : @NO)
+    resolve(@(self->isSupported));
 }
 
 // Sets the interval between event samples
-RCT_REMAP_METHOD(setInterval:(NSInteger) interval)) {
-	self->intervalMillis = interval;
+RCT_EXPORT_METHOD(setInterval:(NSInteger) interval) {
+  self->intervalMillis = interval;
 }
 
 // Sets the local pressure in hectopascals
-RCT_REMAP_METHOD(setLocalPressure:(NSInteger) pressurehPa)) {
-	self->localPressurehPa = pressurehPa;
+RCT_EXPORT_METHOD(setLocalPressure:(NSInteger) pressurehPa) {
+  self->localPressurehPa = pressurehPa;
 }
 
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
-	if(!self->observing) {
+  if(!self->observing) {
        [self->altimeter startRelativeAltitudeUpdatesToQueue:self->altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
            long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
-           long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
+           long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
            if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
-           	   // Get the raw pressure in millibar/hPa
+               float lastAltitudeASL = self->altitudeASL;
+               // Get the raw pressure in millibar/hPa
                self->rawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
                // Calculate standard atmpsphere altitude in metres
-               self->altitudeASL = getAltitude(PRESSURE_STANDARD_ATMOSPHERE, self->rawPressure);
+               self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
                // Calculate our vertical speed in metres per second
-               float verticalSpeed = ((self->altitudeASL - self->lastAltitudeASL) / timeSinceLastUpdate) * 1000;
+               float verticalSpeed = ((self->altitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
                // Calculate our altitude based on our local pressure
                self->altitude = getAltitude(self->localPressurehPa, self->rawPressure);
                // Get the relative altitude
-               self->relativeAltitude = altitudeData.relativeAltitude.longValue;
+               float relativeAltitude = altitudeData.relativeAltitude.longValue;
                // Send change events to the Javascript side via the React Native bridge 
                [self sendEventWithName:@"barometerUpdate" body:@{
                                                                 @"timestamp": @(tempMs),
                                                                 @"pressure": @(self->rawPressure),
                                                                 @"altitudeASL": @(self->altitudeASL),
                                                                 @"altitude": @(self->altitude),
-                                                                @"relativeAltitude": @(self->relativeAltitude),
+                                                                @"relativeAltitude": @(relativeAltitude),
                                                                 @"verticalSpeed": @(verticalSpeed)
                                                                 }
                 ];
@@ -96,8 +100,6 @@ RCT_EXPORT_METHOD(stopObserving) {
    self->altitudeASL = 0;
    self->altitude = 0;
    self->lastSampleTime = 0;
-   self->relativeAltitude = 0;
-   self->initialAltitude = -1;
    self->observing = false;
 }
 
@@ -112,3 +114,4 @@ float getAltitude(float p0, float p)
 }
 
 @end
+

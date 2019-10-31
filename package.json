@@ -1,7 +1,7 @@
 {
   "name": "react-native-barometer",
   "title": "React Native Barometer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Obtain barometric and altitude readings for both Android and iOS",
   "main": "index.js",
   "scripts": {
