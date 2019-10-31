@@ -44,7 +44,9 @@ const Barometer = {
 
   // Stop all watching/observing
   stopObserving: function() {
-    for (let ii = 0; ii < barometerSubscriptions.length; ii++) {
+    let ii = 0;
+    RNBarometer.stopObserving();
+    for (ii = 0; ii < barometerSubscriptions.length; ii++) {
       const sub = barometerSubscriptions[ii];
       if (sub) {
         sub.remove();
@@ -59,7 +61,7 @@ const Barometer = {
     return await RNBarometer.isSupported();
   },
 
-  // Sets the interval between evet samples
+  // Sets the interval between event samples
   setInterval: function(interval) {
     RNBarometer.setInterval(interval);
     if(barometerUpdatesEnabled) {
