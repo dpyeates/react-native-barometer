@@ -16,17 +16,17 @@ RCT_EXPORT_MODULE()
 - (id) init {
     self = [super init];
     if (self) {
-        self->altimeter = [[CMAltimeter alloc] init];
-        self->isSupported = [CMAltimeter isRelativeAltitudeAvailable];
-        self->altimeterQueue = [[NSOperationQueue alloc] init];
-        [self->altimeterQueue setName:@"DeviceAltitude"];
-        [self->altimeterQueue setMaxConcurrentOperationCount:1];
-        self->localPressurehPa = STANDARD_ATMOSPHERE;
-        self->rawPressure = 0;
-        self->altitudeASL = 0;
-        self->lastSampleTime = 0;
-        self->intervalMillis = 200;
-        self->observing = false;
+        altimeter = [[CMAltimeter alloc] init];
+        isSupported = [CMAltimeter isRelativeAltitudeAvailable];
+        altimeterQueue = [[NSOperationQueue alloc] init];
+        [altimeterQueue setName:@"DeviceAltitude"];
+        [altimeterQueue setMaxConcurrentOperationCount:1];
+        localPressurehPa = STANDARD_ATMOSPHERE;
+        rawPressure = 0;
+        altitudeASL = 0;
+        lastSampleTime = 0;
+        intervalMillis = 200;
+        observing = false;
     }
     return self;
 }
@@ -45,23 +45,23 @@ RCT_EXPORT_MODULE()
 RCT_REMAP_METHOD(isSupported,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject) {
-    resolve(@(self->isSupported));
+    resolve(@(isSupported));
 }
 
 // Sets the interval between event samples
 RCT_EXPORT_METHOD(setInterval:(NSInteger) interval) {
-  self->intervalMillis = interval;
+  intervalMillis = interval;
 }
 
 // Sets the local pressure in hectopascals
 RCT_EXPORT_METHOD(setLocalPressure:(NSInteger) pressurehPa) {
-  self->localPressurehPa = pressurehPa;
+  localPressurehPa = pressurehPa;
 }
 
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
-  if(!self->observing) {
-       [self->altimeter startRelativeAltitudeUpdatesToQueue:self->altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
+  if(!observing) {
+       [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
            long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
            long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
            if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
@@ -89,18 +89,18 @@ RCT_EXPORT_METHOD(startObserving) {
            }
            self->lastSampleTime = tempMs;
        }];
-       self->observing = true;
+       observing = true;
    }
 }
 
 // Stops observing pressure
 RCT_EXPORT_METHOD(stopObserving) {
-   [self->altimeter stopRelativeAltitudeUpdates];
-   self->rawPressure = 0;
-   self->altitudeASL = 0;
-   self->altitude = 0;
-   self->lastSampleTime = 0;
-   self->observing = false;
+   [altimeter stopRelativeAltitudeUpdates];
+   rawPressure = 0;
+   altitudeASL = 0;
+   altitude = 0;
+   lastSampleTime = 0;
+   observing = false;
 }
 
 // Computes the Altitude in meters from the atmospheric pressure and the pressure at sea level.
