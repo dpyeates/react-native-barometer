@@ -113,7 +113,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   public void startObserving(Promise promise) {
     if (mPressureSensor == null) {
       promise.reject("-1",
-          "Pressure sensor not available; will not provide orientation data.");
+          "Pressure sensor not available; will not provide barometer data.");
       return;
     }
     mObserving = true;
