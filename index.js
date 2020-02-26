@@ -31,7 +31,7 @@ const Barometer = {
     barometerSubscriptions[watchID] = undefined;
     // check for any remaining watchers
     let noWatchers = true;
-    for (let ii = 0; ii < barometer.length; ii++) {
+    for (let ii = 0; ii < barometerSubscriptions.length; ii++) {
       if (barometerSubscriptions[ii]) {
         noWatchers = false; // still valid watchers
       }
