@@ -73,7 +73,7 @@ RCT_EXPORT_METHOD(startObserving) {
                // Calculate our vertical speed in metres per second
                float verticalSpeed = ((self->altitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
                // Calculate our altitude based on our local pressure
-               self->altitude = getAltitude(self->localPressurehPa, self->rawPressure);
+               self->altitude = getAltitude(STANDARD_ATMOSPHERE, self->localPressurehPa);
                // Get the relative altitude
                float relativeAltitude = altitudeData.relativeAltitude.longValue;
                // Send change events to the Javascript side via the React Native bridge 
