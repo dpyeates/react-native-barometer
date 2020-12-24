@@ -9,10 +9,10 @@
     bool isSupported;
     long intervalMillis;
     long long lastSampleTime;
-    float localPressurehPa;
-    float rawPressure;
-    float altitudeASL;
-    float altitude;
+    double localPressurehPa;
+    double rawPressure;
+    double altitudeASL;
+    double altitude;
 }
 
 @end

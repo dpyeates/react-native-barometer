@@ -7,7 +7,7 @@
 #import <React/RCTEventDispatcher.h>
 #import <React/RCTLog.h>
 
-const float STANDARD_ATMOSPHERE = 1013.25;
+const double STANDARD_ATMOSPHERE = 1013.25;
 
 @implementation RNBarometer
 
@@ -25,7 +25,7 @@ RCT_EXPORT_MODULE()
         rawPressure = 0;
         altitudeASL = 0;
         lastSampleTime = 0;
-        intervalMillis = 200;
+        intervalMillis = 200; // 5Hz
         observing = false;
     }
     return self;
@@ -65,17 +65,17 @@ RCT_EXPORT_METHOD(startObserving) {
            long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
            long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
            if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
-               float lastAltitudeASL = self->altitudeASL;
+               double lastAltitudeASL = self->altitudeASL;
                // Get the raw pressure in millibar/hPa
                self->rawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
                // Calculate standard atmpsphere altitude in metres
                self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
                // Calculate our vertical speed in metres per second
-               float verticalSpeed = ((self->altitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
+               double verticalSpeed = ((self->altitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
                // Calculate our altitude based on our local pressure
                self->altitude = getAltitude(self->localPressurehPa, self->rawPressure);
                // Get the relative altitude
-               float relativeAltitude = altitudeData.relativeAltitude.longValue;
+               double relativeAltitude = altitudeData.relativeAltitude.longValue;
                // Send change events to the Javascript side via the React Native bridge 
                [self sendEventWithName:@"barometerUpdate" body:@{
                                                                 @"timestamp": @(tempMs),
@@ -107,10 +107,10 @@ RCT_EXPORT_METHOD(stopObserving) {
 // p0 pressure at sea level
 // p atmospheric pressure
 // returns an altitude in meters
-float getAltitude(float p0, float p)
+double getAltitude(double p0, double p)
 {
-  const float coef = 1.0 / 5.255;
-  return 44330.0 * (1.0 - (float)pow(p/p0, coef));
+  const double coef = 1.0 / 5.255;
+  return 44330.0 * (1.0 - pow(p/p0, coef));
 }
 
 @end

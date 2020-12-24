@@ -27,7 +27,7 @@ import com.facebook.react.modules.core.RCTNativeAppEventEmitter;
 @ReactModule(name = RNBarometerModule.NAME)
 public class RNBarometerModule extends ReactContextBaseJavaModule implements LifecycleEventListener, SensorEventListener {
   public static final String NAME = "RNBarometer";
-  private static final float kPressFilteringFactor = 0.3f;
+  private static final double kPressFilteringFactor = 0.3;
   private static final int ignoreSamples = 10;
   private final ReactApplicationContext reactContext;
   private final SensorManager mSensorManager;
@@ -35,11 +35,11 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   private boolean mObserving;
   private int mIntervalMillis;
   private long mLastSampleTime;
-  private float mInitialAltitude;
-  private float mRelativeAltitude;
-  private float mRawPressure;
-  private float mAltitudeASL;
-  private float mLocalPressurehPa;
+  private double mInitialAltitude;
+  private double mRelativeAltitude;
+  private double mRawPressure;
+  private double mAltitudeASL;
+  private double mLocalPressurehPa;
   private int mIgnoredSamples;
 
   public RNBarometerModule(ReactApplicationContext reactContext) {
@@ -55,7 +55,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     mLastSampleTime = 0;
     mRelativeAltitude = 0;
     mInitialAltitude = -1;
-    mIntervalMillis = 200;
+    mIntervalMillis = 200; // 5Hz
     mObserving = false;
   }
 
@@ -104,7 +104,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
 
   @ReactMethod
   // Sets the local pressure in hectopascals
-  public void setLocalPressure(float pressurehPa) {
+  public void setLocalPressure(double pressurehPa) {
     mLocalPressurehPa = pressurehPa;
   }
 
@@ -142,15 +142,15 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     long tempMs = System.currentTimeMillis();
     long timeSinceLastUpdate = tempMs - mLastSampleTime;
     if (timeSinceLastUpdate >= mIntervalMillis) {
-      float lastAltitudeASL = mAltitudeASL;
-      // Get the raw pressure in millibar/hPa
-      mRawPressure = (float) (sensorEvent.values[0] * kPressFilteringFactor + mRawPressure * (1.0 - kPressFilteringFactor));
+      double lastAltitudeASL = mAltitudeASL;
+      // Get the filtered raw pressure in millibar/hPa
+      mRawPressure = (sensorEvent.values[0] * kPressFilteringFactor + mRawPressure * (1.0 - kPressFilteringFactor));
       // Calculate standard atmpsphere altitude in metres
       mAltitudeASL = getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, mRawPressure);
       // Calculate our vertical speed in metres per second
-      float verticalSpeed = ((mAltitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
+      double verticalSpeed = ((mAltitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
       // Calculate our altitude based on our local pressure
-      float altitude = getAltitude(mLocalPressurehPa, mRawPressure);
+      double altitude = getAltitude(mLocalPressurehPa, mRawPressure);
       // Calculate our relative altitude. This reflects the change in the current altitude,
       // not the absolute altitude. So a hiking app might use this object to track the
       // user’s elevation gain over the course of a hike for example.
@@ -185,9 +185,9 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   // p0 pressure at sea level
   // p atmospheric pressure
   // returns an altitude in meters
-  private static float getAltitude(float p0, float p) {
-    final float coef = 1.0f / 5.255f;
-    return 44330.0f * (1.0f - (float) Math.pow(p / p0, coef));
+  private static double getAltitude(double p0, double p) {
+    final double coef = 1.0 / 5.255;
+    return 44330.0 * (1.0 - Math.pow(p / p0, coef));
   }
 
 }
