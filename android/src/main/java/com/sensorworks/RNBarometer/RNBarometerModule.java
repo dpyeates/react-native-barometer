@@ -31,8 +31,8 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   private static final int ignoreSamples = 10;
   private final ReactApplicationContext reactContext;
   private final SensorManager mSensorManager;
-  private Sensor mPressureSensor;
-  private boolean mObserving;
+  private final Sensor mPressureSensor;
+  private boolean isRunning;
   private int mIntervalMillis;
   private long mLastSampleTime;
   private double mInitialAltitude;
@@ -56,7 +56,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     mRelativeAltitude = 0;
     mInitialAltitude = -1;
     mIntervalMillis = 200; // 5Hz
-    mObserving = false;
+    isRunning = false;
   }
 
   @Override
@@ -70,14 +70,14 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
 
   @Override
   public void onHostResume() {
-    if (mObserving) {
+    if (isRunning) {
       mSensorManager.registerListener(this, mPressureSensor, mIntervalMillis * 1000);
     }
   }
 
   @Override
   public void onHostPause() {
-    if (mObserving) {
+    if (isRunning) {
       mSensorManager.unregisterListener(this);
     }
   }
@@ -100,6 +100,11 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   // Sets the interval between event samples
   public void setInterval(int interval) {
     mIntervalMillis = interval;
+    boolean shouldStart = isRunning;
+    stopObserving();
+    if(shouldStart) {
+      startObserving(null);
+    }
   }
 
   @ReactMethod
@@ -116,7 +121,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
           "Pressure sensor not available; will not provide barometer data.");
       return;
     }
-    mObserving = true;
+    isRunning = true;
     mSensorManager.registerListener(this, mPressureSensor, mIntervalMillis * 1000);
     promise.resolve(mIntervalMillis);
   }
@@ -131,7 +136,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     mRelativeAltitude = 0;
     mIgnoredSamples = 0;
     mInitialAltitude = -1;
-    mObserving = false;
+    isRunning = false;
   }
 
   //------------------------------------------------------------------------------------------------
@@ -145,7 +150,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
       double lastAltitudeASL = mAltitudeASL;
       // Get the filtered raw pressure in millibar/hPa
       mRawPressure = (sensorEvent.values[0] * kPressFilteringFactor + mRawPressure * (1.0 - kPressFilteringFactor));
-      // Calculate standard atmpsphere altitude in metres
+      // Calculate standard atmosphere altitude in metres
       mAltitudeASL = getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, mRawPressure);
       // Calculate our vertical speed in metres per second
       double verticalSpeed = ((mAltitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;

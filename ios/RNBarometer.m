@@ -14,43 +14,47 @@ const double STANDARD_ATMOSPHERE = 1013.25;
 RCT_EXPORT_MODULE()
 
 - (id) init {
-    self = [super init];
-    if (self) {
-        altimeter = [[CMAltimeter alloc] init];
-        isSupported = [CMAltimeter isRelativeAltitudeAvailable];
-        altimeterQueue = [[NSOperationQueue alloc] init];
-        [altimeterQueue setName:@"DeviceAltitude"];
-        [altimeterQueue setMaxConcurrentOperationCount:1];
-        localPressurehPa = STANDARD_ATMOSPHERE;
-        rawPressure = 0;
-        altitudeASL = 0;
-        lastSampleTime = 0;
-        intervalMillis = 200; // 5Hz
-        observing = false;
-    }
-    return self;
+  self = [super init];
+  if (self) {
+    altimeter = [[CMAltimeter alloc] init];
+    altimeterQueue = [[NSOperationQueue alloc] init];
+    [altimeterQueue setName:@"DeviceAltitude"];
+    [altimeterQueue setMaxConcurrentOperationCount:1];
+    localPressurehPa = STANDARD_ATMOSPHERE;
+    rawPressure = 0;
+    altitudeASL = 0;
+    lastSampleTime = 0;
+    intervalMillis = 200; // 5Hz
+    isRunning = false;
+  }
+  return self;
 }
 
 + (BOOL)requiresMainQueueSetup
 {
-    return NO;
+  return NO;
 }
 
 - (NSArray<NSString *> *)supportedEvents
 {
-    return @[@"barometerUpdate"];
+  return @[@"barometerUpdate"];
 }
 
 // Called to determine if this device is capable of providing barometer updates
 RCT_REMAP_METHOD(isSupported,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject) {
-    resolve(@(isSupported));
+  resolve(@([CMAltimeter isRelativeAltitudeAvailable]));
 }
 
 // Sets the interval between event samples
 RCT_EXPORT_METHOD(setInterval:(NSInteger) interval) {
   intervalMillis = interval;
+  bool shouldStart = isRunning;
+  [self stopObserving];
+  if(shouldStart) {
+    [self startObserving];
+  }
 }
 
 // Sets the local pressure in hectopascals
@@ -60,47 +64,45 @@ RCT_EXPORT_METHOD(setLocalPressure:(NSInteger) pressurehPa) {
 
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
-  if(!observing) {
-       [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
-           long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
-           long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
-           if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
-               double lastAltitudeASL = self->altitudeASL;
-               // Get the raw pressure in millibar/hPa
-               self->rawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
-               // Calculate standard atmpsphere altitude in metres
-               self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
-               // Calculate our vertical speed in metres per second
-               double verticalSpeed = ((self->altitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
-               // Calculate our altitude based on our local pressure
-               self->altitude = getAltitude(self->localPressurehPa, self->rawPressure);
-               // Get the relative altitude
-               double relativeAltitude = altitudeData.relativeAltitude.longValue;
-               // Send change events to the Javascript side via the React Native bridge 
-               [self sendEventWithName:@"barometerUpdate" body:@{
-                                                                @"timestamp": @(tempMs),
-                                                                @"pressure": @(self->rawPressure),
-                                                                @"altitudeASL": @(self->altitudeASL),
-                                                                @"altitude": @(self->altitude),
-                                                                @"relativeAltitude": @(relativeAltitude),
-                                                                @"verticalSpeed": @(verticalSpeed)
-                                                                }
-                ];
-           }
-           self->lastSampleTime = tempMs;
-       }];
-       observing = true;
-   }
+  if(!isRunning) {
+    [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
+      long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+      long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
+      if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
+        double lastAltitudeASL = self->altitudeASL;
+        // Get the raw pressure in millibar/hPa
+        self->rawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
+        // Calculate standard atmpsphere altitude in metres
+        self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
+        // Calculate our vertical speed in metres per second
+        double verticalSpeed = ((self->altitudeASL - lastAltitudeASL) / timeSinceLastUpdate) * 1000;
+        // Calculate our altitude based on our local pressure
+        self->altitude = getAltitude(self->localPressurehPa, self->rawPressure);
+        // Send change events to the Javascript side via the React Native bridge
+        [self sendEventWithName:@"barometerUpdate" body:@{
+          @"timestamp": @(tempMs),
+          @"pressure": @(self->rawPressure),
+          @"altitudeASL": @(self->altitudeASL),
+          @"altitude": @(self->altitude),
+          @"relativeAltitude": @(altitudeData.relativeAltitude.longValue),
+          @"verticalSpeed": @(verticalSpeed)
+        }
+         ];
+      }
+      self->lastSampleTime = tempMs;
+    }];
+    isRunning = true;
+  }
 }
 
 // Stops observing pressure
 RCT_EXPORT_METHOD(stopObserving) {
-   [altimeter stopRelativeAltitudeUpdates];
-   rawPressure = 0;
-   altitudeASL = 0;
-   altitude = 0;
-   lastSampleTime = 0;
-   observing = false;
+  [altimeter stopRelativeAltitudeUpdates];
+  rawPressure = 0;
+  altitudeASL = 0;
+  altitude = 0;
+  lastSampleTime = 0;
+  isRunning = false;
 }
 
 // Computes the Altitude in meters from the atmospheric pressure and the pressure at sea level.
