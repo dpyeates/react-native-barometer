@@ -5,7 +5,7 @@
 @interface RNBarometer : RCTEventEmitter <RCTBridgeModule> {
     CMAltimeter *altimeter;
     NSOperationQueue *altimeterQueue;
-    bool observing;
+    bool isRunning;
     bool isSupported;
     long intervalMillis;
     long long lastSampleTime;
