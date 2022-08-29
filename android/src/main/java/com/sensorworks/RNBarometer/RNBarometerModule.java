@@ -90,6 +90,13 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   //------------------------------------------------------------------------------------------------
   // React interface
 
+  // Required for RN built in EventEmitter Calls.
+  @ReactMethod
+  public void addListener(String eventName) {}
+
+  @ReactMethod
+  public void removeListeners(Integer count) {}
+
   @ReactMethod
   // Determines if this device is capable of providing barometric updates
   public void isSupported(Promise promise) {
