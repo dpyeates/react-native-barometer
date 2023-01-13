@@ -139,8 +139,8 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
 
   @ReactMethod
   // Gets smoothing factor
-  public double getSmoothingFactor() {
-    return mSmoothingFactor;
+  public double getSmoothingFactor(Promise promise) {
+    return promise.resolve(mSmoothingFactor);
   }
 
   @ReactMethod

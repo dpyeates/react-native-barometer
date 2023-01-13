@@ -84,8 +84,8 @@ const Barometer = {
     RNBarometer.setSmoothingFactor(smoothingFactor);
   },
 
-  getSmoothingFactor: function() {
-    return RNBarometer.getSmoothingFactor();
+  getSmoothingFactor: async function() {
+    return await RNBarometer.getSmoothingFactor();
   }
 
 };
