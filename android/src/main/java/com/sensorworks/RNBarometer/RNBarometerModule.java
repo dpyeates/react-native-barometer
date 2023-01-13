@@ -26,14 +26,19 @@ import com.facebook.react.modules.core.RCTNativeAppEventEmitter;
 
 @ReactModule(name = RNBarometerModule.NAME)
 public class RNBarometerModule extends ReactContextBaseJavaModule implements LifecycleEventListener, SensorEventListener {
+  
   public static final String NAME = "RNBarometer";
-  private static final double kPressFilteringFactor = 0.3;
+
+  public static final double DEFAULT_INTERVAL_MS = 200;  //  5 Hz
+  public static final double DEFAULT_SMOOTHING_FACTOR = 0.7;
+
   private static final int ignoreSamples = 10;
   private final ReactApplicationContext reactContext;
   private final SensorManager mSensorManager;
   private final Sensor mPressureSensor;
   private boolean isRunning;
-  private int mIntervalMillis;
+  private int mIntervalMillis = DEFAULT_INTERVAL_MS;
+  private double mSmoothingFactor = DEFAULT_SMOOTHING_FACTOR;
   private long mLastSampleTime;
   private double mInitialAltitude;
   private double mRelativeAltitude;
@@ -55,7 +60,8 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     mLastSampleTime = 0;
     mRelativeAltitude = 0;
     mInitialAltitude = -1;
-    mIntervalMillis = 200; // 5Hz
+    mIntervalMillis = DEFAULT_INTERVAL_MS;
+    mFilterFactor = DEFAULT_FILTER_FACTOR;
     isRunning = false;
   }
 
@@ -121,6 +127,23 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   }
 
   @ReactMethod
+  // Sets smoothing factor [0 -1].
+  // Note: More smoothing means more latency before
+  // the smoothed value has "caught up with" current
+  // conditions.
+  public void setSmoothingFactor(double smoothingFactor) {
+    if (smoothingFactor >= 0 && smoothingFactor <= 1.0) {
+      mSmoothingFactor = smoothingFactor;
+    }
+  }
+
+  @ReactMethod
+  // Gets smoothing factor
+  public double getSmoothingFactor() {
+    return mSmoothingFactor;
+  }
+
+  @ReactMethod
   // Starts observing pressure
   public void startObserving(Promise promise) {
     if (mPressureSensor == null) {
@@ -156,7 +179,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     if (timeSinceLastUpdate >= mIntervalMillis) {
       double lastAltitudeASL = mAltitudeASL;
       // Get the filtered raw pressure in millibar/hPa
-      mRawPressure = (sensorEvent.values[0] * kPressFilteringFactor + mRawPressure * (1.0 - kPressFilteringFactor));
+      mRawPressure = (sensorEvent.values[0] * (((double)1.0) - mSmoothingFactor) + mRawPressure * mSmoothingFactor);
       // Calculate standard atmosphere altitude in metres
       mAltitudeASL = getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, mRawPressure);
       // Calculate our vertical speed in metres per second

@@ -73,6 +73,19 @@ const Barometer = {
   // Sets the local air pressure in hPA/Millibars
   setLocalPressure: function(pressure) {
     RNBarometer.setLocalPressure(pressure);
+  },
+
+  // Sets smoothingFactor, a value [0 - 1] that determines
+  // how much smoothing is applied to the raw value.
+  // Note: More smoothing means more latency before
+  // the smoothed value has "caught up with" current
+  // conditions.
+  setSmoothingFactor: function(smoothingFactor) {
+    RNBarometer.setSmoothingFactor(smoothingFactor);
+  },
+
+  getSmoothingFactor: function() {
+    return RNBarometer.getSmoothingFactor();
   }
 
 };

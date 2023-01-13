@@ -31,6 +31,8 @@ declare namespace Barometer {  // See module README for function descriptions
   function watch(success: BarometerWatchCallbackFn): number;
   function clearWatch(watchID: any): void;
   function stopObserving(): void;
+  function setSmoothingFactor(smoothingFactor:double): void;
+  function getSmoothingFactor(): Promise<double>;
 }
 
 export {
