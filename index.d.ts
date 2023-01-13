@@ -19,7 +19,7 @@ interface BarometerPayload {  // See README for descriptions
 type WatchCallbackFn = (payload:BarometerPayload) => number;
 
 interface IBarometer {
-  watch: WatchCallbackFn,
+  watch: (watchCallbackFn:WatchCallbackFn) => number,
   clearWatch: (watchID:number) => void,
   stopObserving: () => void,
   isSupported: () => Promise<boolean>,
