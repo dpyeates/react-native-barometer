@@ -7,7 +7,7 @@
 
 declare module "react-native-barometer";
 
-interface Payload {  // See README for descriptions
+interface BarometerPayload {  // See README for descriptions
   timestamp:number,
   pressure:number,
   altitudeASL:number,
@@ -16,7 +16,7 @@ interface Payload {  // See README for descriptions
   verticalSpeed:number,
 };
 
-type WatchCallbackFn = (payload:Payload) => number;
+type WatchCallbackFn = (payload:BarometerPayload) => number;
 
 interface IBarometer {
   watch: WatchCallbackFn,
@@ -30,7 +30,8 @@ interface IBarometer {
 declare const Barometer:IBarometer;
 
 export {
-  Barometer
+  Barometer,
+  BarometerPayload
 };
 
 export default Barometer;
