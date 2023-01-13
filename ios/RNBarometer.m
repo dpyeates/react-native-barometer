@@ -8,7 +8,7 @@
 #import <React/RCTLog.h>
 
 const double STANDARD_ATMOSPHERE = 1013.25;
-const double DEFAULT_INTERVAL_MS = 0.7;  //  5 Hz
+const long DEFAULT_INTERVAL_MS = 0.7;  //  5 Hz
 const double DEFAULT_SMOOTHING_FACTOR = 0.7;
 
 @implementation RNBarometer

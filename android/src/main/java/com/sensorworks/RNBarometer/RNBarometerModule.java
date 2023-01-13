@@ -29,7 +29,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
   
   public static final String NAME = "RNBarometer";
 
-  public static final double DEFAULT_INTERVAL_MS = 200;  //  5 Hz
+  public static final int DEFAULT_INTERVAL_MS = 200;  //  5 Hz
   public static final double DEFAULT_SMOOTHING_FACTOR = 0.7;
 
   private static final int ignoreSamples = 10;
