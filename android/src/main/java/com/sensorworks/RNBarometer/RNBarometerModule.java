@@ -61,7 +61,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     mRelativeAltitude = 0;
     mInitialAltitude = -1;
     mIntervalMillis = DEFAULT_INTERVAL_MS;
-    mFilterFactor = DEFAULT_FILTER_FACTOR;
+    mSmoothingFactor = DEFAULT_SMOOTHING_FACTOR;
     isRunning = false;
   }
 
@@ -178,7 +178,7 @@ public class RNBarometerModule extends ReactContextBaseJavaModule implements Lif
     long timeSinceLastUpdate = tempMs - mLastSampleTime;
     if (timeSinceLastUpdate >= mIntervalMillis) {
       double lastAltitudeASL = mAltitudeASL;
-      // Get the filtered raw pressure in millibar/hPa
+      // Get the smoothed raw pressure in millibar/hPa
       mRawPressure = (sensorEvent.values[0] * (((double)1.0) - mSmoothingFactor) + mRawPressure * mSmoothingFactor);
       // Calculate standard atmosphere altitude in metres
       mAltitudeASL = getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, mRawPressure);
