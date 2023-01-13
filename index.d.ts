@@ -16,7 +16,7 @@ interface BarometerPayload {  // See README for descriptions
   verticalSpeed:number,
 };
 
-type WatchCallbackFn = (payload:BarometerPayload) => number;
+type WatchCallbackFn = (payload:BarometerPayload) => void;
 
 interface IBarometer {
   watch: (watchCallbackFn:WatchCallbackFn) => number,
