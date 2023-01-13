@@ -31,7 +31,8 @@ declare const Barometer:IBarometer;
 
 export {
   Barometer,
-  BarometerPayload
+  BarometerPayload,
+  WatchCallbackFn
 };
 
 export default Barometer;
