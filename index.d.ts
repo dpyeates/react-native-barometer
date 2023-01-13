@@ -7,6 +7,8 @@
 
 declare module "react-native-barometer";
 
+import Barometer from ".";
+
 interface BarometerPayload {  // See README for descriptions
   timestamp:number,
   pressure:number,
