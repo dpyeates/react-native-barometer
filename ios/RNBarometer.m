@@ -8,6 +8,8 @@
 #import <React/RCTLog.h>
 
 const double STANDARD_ATMOSPHERE = 1013.25;
+const long DEFAULT_INTERVAL_MS = 0.7;  //  5 Hz
+const double DEFAULT_SMOOTHING_FACTOR = 0.7;
 
 @implementation RNBarometer
 
@@ -24,8 +26,9 @@ RCT_EXPORT_MODULE()
     rawPressure = 0;
     altitudeASL = 0;
     lastSampleTime = 0;
-    intervalMillis = 200; // 5Hz
+    intervalMillis = DEFAULT_INTERVAL_MS;
     isRunning = false;
+    smoothingFactor = DEFAULT_SMOOTHING_FACTOR;
   }
   return self;
 }
@@ -62,6 +65,24 @@ RCT_EXPORT_METHOD(setLocalPressure:(NSInteger) pressurehPa) {
   localPressurehPa = pressurehPa;
 }
 
+// Sets smoothing factor [0 -1].
+// Note: More smoothing means more latency before
+// the smoothed value has "caught up with" current
+// conditions.
+RCT_EXPORT_METHOD(setSmoothingFactor:(double) smoothingFactor) {
+  if (smoothingFactor >= 0 && smoothingFactor <= 1.0) {
+    self->smoothingFactor = smoothingFactor;
+  }
+}
+
+// Get the smoothing factor
+RCT_EXPORT_METHOD(getSmoothingFactor,
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  return resolve(self->smoothingFactor);
+}
+
+
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
@@ -71,7 +92,9 @@ RCT_EXPORT_METHOD(startObserving) {
       if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
         double lastAltitudeASL = self->altitudeASL;
         // Get the raw pressure in millibar/hPa
-        self->rawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
+        double newRawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
+        // Apply any smoothing
+        self->rawPressure = (newRawPressure * (((double)1.0) - mSmoothingFactor) + self->rawPressure * mSmoothingFactor);
         // Calculate standard atmpsphere altitude in metres
         self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
         // Calculate our vertical speed in metres per second
@@ -114,6 +137,7 @@ double getAltitude(double p0, double p)
   const double coef = 1.0 / 5.255;
   return 44330.0 * (1.0 - pow(p/p0, coef));
 }
+
 
 @end
 
