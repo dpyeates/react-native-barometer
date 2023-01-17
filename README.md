@@ -131,7 +131,7 @@ Before using, check to see if barometric updates are supported on the device.
 
 ```javascript
 
-const isSupported = Barometer.isSupported();
+const isSupported = await Barometer.isSupported();
 
 ```
 ---
