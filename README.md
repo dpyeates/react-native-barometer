@@ -136,9 +136,17 @@ const isSupported = await Barometer.isSupported();
 ```
 ---
 
-#### `setInterval()`
+#### `setInterval(intervalMs)`
 
-Optionally request an update interval in ms. The default update rate is (approx) 200ms, i.e. 5Hz.
+Optionally request an update interval in ms. 
+
+NOTE 1:
+* The default update rate on Android is ~200ms, i.e. 5Hz.
+* The default update rate on iOS is ~940ms, ~1Hz
+
+NOTE 2: Internally, iOS' barometer/altimeter has a fixed sampling period; see [here](https://developer.apple.com/forums/thread/123983). So for iOS:
+  * intervals < the fixed sampling period will *effectively* be coerced to the fixed sampling period 
+  * intervals > the fixed sampling period will *effectively* be rounded to the nearest *multiple* of the fixed sampling period
 
 ```javascript
 

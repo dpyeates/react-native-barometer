@@ -51,8 +51,13 @@ RCT_REMAP_METHOD(isSupported,
 }
 
 // Sets the interval between event samples
-RCT_EXPORT_METHOD(setInterval:(NSInteger) interval) {
-  intervalMillis = interval;
+// NOTE: iOS' altimeter seems to have a fixed sampling period (~940ms on one tested device); see:
+// https://developer.apple.com/forums/thread/123983
+// So for iOS:
+//   * intervals < the fixed sampling period will *effectively* be coerced to this fixed sampling period 
+//   * intervals > the fixed sampling period will *effectively* be rounded to the nearest multiple of the fixed sampling period
+RCT_EXPORT_METHOD(setInterval:(NSInteger) intervalMs) {
+  intervalMillis = intervalMs;
   bool shouldStart = isRunning;
   [self stopObserving];
   if(shouldStart) {
@@ -76,25 +81,30 @@ RCT_EXPORT_METHOD(setSmoothingFactor:(double) smoothingFactor) {
 }
 
 // Get the smoothing factor
-RCT_EXPORT_METHOD(getSmoothingFactor,
-                  resolver:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(getSmoothingFactor:
+                  (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
-  return resolve(self->smoothingFactor);
+  return resolve(@(self->smoothingFactor));
 }
 
 
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
+    // NOTE: iOS' altimeter has a fixed sample period of 1000ms
     [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
+      NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
       long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
-      if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
+      NSLog(@"  tempMs: %lld", tempMs);
+      NSLog(@"  self->lastSampleTime: %lld", self->lastSampleTime);
+      NSLog(@"  timeSinceLastUpdate: %lld", timeSinceLastUpdate);
+      if (altitudeData && (timeSinceLastUpdate >= self->intervalMillis)) {
         double lastAltitudeASL = self->altitudeASL;
         // Get the raw pressure in millibar/hPa
         double newRawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
         // Apply any smoothing
-        self->rawPressure = (newRawPressure * (((double)1.0) - mSmoothingFactor) + self->rawPressure * mSmoothingFactor);
+        self->rawPressure = (newRawPressure * (((double)1.0) - self->smoothingFactor) + self->rawPressure * self->smoothingFactor);
         // Calculate standard atmpsphere altitude in metres
         self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
         // Calculate our vertical speed in metres per second
@@ -109,11 +119,11 @@ RCT_EXPORT_METHOD(startObserving) {
           @"altitude": @(self->altitude),
           @"relativeAltitude": @(altitudeData.relativeAltitude.longValue),
           @"verticalSpeed": @(verticalSpeed)
-        }
-         ];
+        }];
+        self->lastSampleTime = tempMs;
       }
-      self->lastSampleTime = tempMs;
     }];
+
     isRunning = true;
   }
 }
