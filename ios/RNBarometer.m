@@ -87,9 +87,13 @@ RCT_EXPORT_METHOD(getSmoothingFactor,
 RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
     [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
+      NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
       long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
-      if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
+      NSLog(@"  tempMs: %ll", tempMs);
+      NSLog(@"  self->lastSampleTime: %ll", self->lastSampleTime);
+      NSLog(@"  timeSinceLastUpdate: %ll", timeSinceLastUpdate);
+      if (altitudeData && (timeSinceLastUpdate >= self->intervalMillis)) {
         double lastAltitudeASL = self->altitudeASL;
         // Get the raw pressure in millibar/hPa
         double newRawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
@@ -114,6 +118,7 @@ RCT_EXPORT_METHOD(startObserving) {
       }
       self->lastSampleTime = tempMs;
     }];
+
     isRunning = true;
   }
 }
