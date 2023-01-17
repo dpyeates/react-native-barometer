@@ -51,8 +51,13 @@ RCT_REMAP_METHOD(isSupported,
 }
 
 // Sets the interval between event samples
-RCT_EXPORT_METHOD(setInterval:(NSInteger) interval) {
-  intervalMillis = interval;
+// NOTE: iOS' altimeter seems to have a fixed sampling period (~940ms on one tested device); see:
+// https://developer.apple.com/forums/thread/123983
+// So for iOS:
+//   * intervals < the fixed sampling period will *effectively* be coerced to this fixed sampling period 
+//   * intervals > the fixed sampling period will *effectively* be rounded to the nearest multiple of the fixed sampling period
+RCT_EXPORT_METHOD(setInterval:(NSInteger) intervalMs) {
+  intervalMillis = intervalMs;
   bool shouldStart = isRunning;
   [self stopObserving];
   if(shouldStart) {
@@ -86,6 +91,7 @@ RCT_EXPORT_METHOD(getSmoothingFactor:
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
+    // NOTE: iOS' altimeter has a fixed sample period of 1000ms
     [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
       NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
@@ -113,8 +119,7 @@ RCT_EXPORT_METHOD(startObserving) {
           @"altitude": @(self->altitude),
           @"relativeAltitude": @(altitudeData.relativeAltitude.longValue),
           @"verticalSpeed": @(verticalSpeed)
-        }
-         ];
+        }];
         self->lastSampleTime = tempMs;
       }
     }];
