@@ -90,9 +90,9 @@ RCT_EXPORT_METHOD(startObserving) {
       NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
       long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
-      NSLog(@"  tempMs: %ll", tempMs);
-      NSLog(@"  self->lastSampleTime: %ll", self->lastSampleTime);
-      NSLog(@"  timeSinceLastUpdate: %ll", timeSinceLastUpdate);
+      NSLog(@"  tempMs: %lld", tempMs);
+      NSLog(@"  self->lastSampleTime: %lld", self->lastSampleTime);
+      NSLog(@"  timeSinceLastUpdate: %lld", timeSinceLastUpdate);
       if (altitudeData && (timeSinceLastUpdate >= self->intervalMillis)) {
         double lastAltitudeASL = self->altitudeASL;
         // Get the raw pressure in millibar/hPa
