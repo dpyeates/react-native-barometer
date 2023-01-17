@@ -93,12 +93,12 @@ RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
     // NOTE: iOS' altimeter has a fixed sample period of 1000ms
     [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
-      NSLog(@"startRelativeAltitudeUpdatesToQueue()");
+      //NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
       long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
-      NSLog(@"  tempMs: %lld", tempMs);
-      NSLog(@"  self->lastSampleTime: %lld", self->lastSampleTime);
-      NSLog(@"  timeSinceLastUpdate: %lld", timeSinceLastUpdate);
+      //NSLog(@"  tempMs: %lld", tempMs);
+      //NSLog(@"  self->lastSampleTime: %lld", self->lastSampleTime);
+      //NSLog(@"  timeSinceLastUpdate: %lld", timeSinceLastUpdate);
       if (altitudeData && (timeSinceLastUpdate >= self->intervalMillis)) {
         double lastAltitudeASL = self->altitudeASL;
         // Get the raw pressure in millibar/hPa
