@@ -8,6 +8,8 @@
 #import <React/RCTLog.h>
 
 const double STANDARD_ATMOSPHERE = 1013.25;
+const long DEFAULT_INTERVAL_MS = 0.7;  //  5 Hz
+const double DEFAULT_SMOOTHING_FACTOR = 0.7;
 
 @implementation RNBarometer
 
@@ -24,8 +26,9 @@ RCT_EXPORT_MODULE()
     rawPressure = 0;
     altitudeASL = 0;
     lastSampleTime = 0;
-    intervalMillis = 200; // 5Hz
+    intervalMillis = DEFAULT_INTERVAL_MS;
     isRunning = false;
+    smoothingFactor = DEFAULT_SMOOTHING_FACTOR;
   }
   return self;
 }
@@ -48,8 +51,13 @@ RCT_REMAP_METHOD(isSupported,
 }
 
 // Sets the interval between event samples
-RCT_EXPORT_METHOD(setInterval:(NSInteger) interval) {
-  intervalMillis = interval;
+// NOTE: iOS' altimeter seems to have a fixed sampling period (~940ms on one tested device); see:
+// https://developer.apple.com/forums/thread/123983
+// So for iOS:
+//   * intervals < the fixed sampling period will *effectively* be coerced to this fixed sampling period 
+//   * intervals > the fixed sampling period will *effectively* be rounded to the nearest multiple of the fixed sampling period
+RCT_EXPORT_METHOD(setInterval:(NSInteger) intervalMs) {
+  intervalMillis = intervalMs;
   bool shouldStart = isRunning;
   [self stopObserving];
   if(shouldStart) {
@@ -62,16 +70,41 @@ RCT_EXPORT_METHOD(setLocalPressure:(NSInteger) pressurehPa) {
   localPressurehPa = pressurehPa;
 }
 
+// Sets smoothing factor [0 -1].
+// Note: More smoothing means more latency before
+// the smoothed value has "caught up with" current
+// conditions.
+RCT_EXPORT_METHOD(setSmoothingFactor:(double) smoothingFactor) {
+  if (smoothingFactor >= 0 && smoothingFactor <= 1.0) {
+    self->smoothingFactor = smoothingFactor;
+  }
+}
+
+// Get the smoothing factor
+RCT_EXPORT_METHOD(getSmoothingFactor:
+                  (RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  return resolve(@(self->smoothingFactor));
+}
+
+
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
+    // NOTE: iOS' altimeter has a fixed sample period (approx ~940ms, on one tested device; may vary by device)
     [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
+      //NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
       long long timeSinceLastUpdate = (tempMs - self->lastSampleTime);
-      if(timeSinceLastUpdate >= self->intervalMillis && altitudeData){
+      //NSLog(@"  tempMs: %lld", tempMs);
+      //NSLog(@"  self->lastSampleTime: %lld", self->lastSampleTime);
+      //NSLog(@"  timeSinceLastUpdate: %lld", timeSinceLastUpdate);
+      if (altitudeData && (timeSinceLastUpdate >= self->intervalMillis)) {
         double lastAltitudeASL = self->altitudeASL;
         // Get the raw pressure in millibar/hPa
-        self->rawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
+        double newRawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
+        // Apply any smoothing
+        self->rawPressure = (newRawPressure * (((double)1.0) - self->smoothingFactor) + self->rawPressure * self->smoothingFactor);
         // Calculate standard atmpsphere altitude in metres
         self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
         // Calculate our vertical speed in metres per second
@@ -86,11 +119,11 @@ RCT_EXPORT_METHOD(startObserving) {
           @"altitude": @(self->altitude),
           @"relativeAltitude": @(altitudeData.relativeAltitude.longValue),
           @"verticalSpeed": @(verticalSpeed)
-        }
-         ];
+        }];
+        self->lastSampleTime = tempMs;
       }
-      self->lastSampleTime = tempMs;
     }];
+
     isRunning = true;
   }
 }
@@ -114,6 +147,7 @@ double getAltitude(double p0, double p)
   const double coef = 1.0 / 5.255;
   return 44330.0 * (1.0 - pow(p/p0, coef));
 }
+
 
 @end
 

@@ -13,6 +13,7 @@
     double rawPressure;
     double altitudeASL;
     double altitude;
+    double smoothingFactor;
 }
 
 @end
