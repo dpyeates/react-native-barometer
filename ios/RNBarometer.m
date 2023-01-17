@@ -91,7 +91,7 @@ RCT_EXPORT_METHOD(getSmoothingFactor:
 // Starts observing pressure
 RCT_EXPORT_METHOD(startObserving) {
   if(!isRunning) {
-    // NOTE: iOS' altimeter has a fixed sample period of 1000ms
+    // NOTE: iOS' altimeter has a fixed sample period (approx ~940ms, on one tested device; may vary by device)
     [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue withHandler:^(CMAltitudeData * _Nullable altitudeData, NSError * _Nullable error) {
       //NSLog(@"startRelativeAltitudeUpdatesToQueue()");
       long long tempMs = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
