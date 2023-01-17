@@ -76,10 +76,10 @@ RCT_EXPORT_METHOD(setSmoothingFactor:(double) smoothingFactor) {
 }
 
 // Get the smoothing factor
-RCT_EXPORT_METHOD(getSmoothingFactor,
-                  resolver:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(getSmoothingFactor:
+                  (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
-  return resolve(self->smoothingFactor);
+  return resolve(@(self->smoothingFactor));
 }
 
 
