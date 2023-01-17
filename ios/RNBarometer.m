@@ -115,8 +115,8 @@ RCT_EXPORT_METHOD(startObserving) {
           @"verticalSpeed": @(verticalSpeed)
         }
          ];
+        self->lastSampleTime = tempMs;
       }
-      self->lastSampleTime = tempMs;
     }];
 
     isRunning = true;
