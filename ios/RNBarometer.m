@@ -98,7 +98,7 @@ RCT_EXPORT_METHOD(startObserving) {
         // Get the raw pressure in millibar/hPa
         double newRawPressure = altitudeData.pressure.doubleValue * 10.0; // the x10 converts to millibar
         // Apply any smoothing
-        self->rawPressure = (newRawPressure * (((double)1.0) - mSmoothingFactor) + self->rawPressure * mSmoothingFactor);
+        self->rawPressure = (newRawPressure * (((double)1.0) - self->smoothingFactor) + self->rawPressure * self->smoothingFactor);
         // Calculate standard atmpsphere altitude in metres
         self->altitudeASL = getAltitude(STANDARD_ATMOSPHERE, self->rawPressure);
         // Calculate our vertical speed in metres per second
