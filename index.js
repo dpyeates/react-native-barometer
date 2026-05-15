@@ -1,81 +1,53 @@
 'use strict';
-import {NativeEventEmitter, NativeModules} from 'react-native';
 
-const {RNBarometer} = NativeModules;
-const BarometerEventEmitter = new NativeEventEmitter(RNBarometer);
-let barometerSubscriptions = [];
-let barometerUpdatesEnabled = false;
+import NativeRNBarometer from './src/NativeRNBarometer';
+const {
+  clampInterval,
+  validatePressure,
+  STANDARD_PRESSURE_HPA,
+  DEFAULT_INTERVAL_MS,
+  MIN_INTERVAL_MS,
+} = require('./src/validation');
+const {createWatchManager} = require('./src/watchManager');
+
+export {STANDARD_PRESSURE_HPA, DEFAULT_INTERVAL_MS, MIN_INTERVAL_MS};
+
+const watchManager = createWatchManager();
 
 const Barometer = {
-
-  // Starts watching/observing of barometer/altitude
-  // The success function is called upon every change
-  watch: function(success) {
-    if (!barometerUpdatesEnabled) {
-      RNBarometer.startObserving();
-      barometerUpdatesEnabled = true;
-    }
-    const watchID = barometerSubscriptions.length;
-    barometerSubscriptions.push(BarometerEventEmitter.addListener('barometerUpdate', success));
-    return watchID;
+  watch: function (success) {
+    watchManager.startObservingIfNeeded(() => NativeRNBarometer.startObserving());
+    return watchManager.addWatch(() =>
+      NativeRNBarometer.onBarometerUpdate(success),
+    );
   },
 
-  // Stops all watching/observing of the passed in watch ID
-  clearWatch: function(watchID) {
-    const sub = barometerSubscriptions[watchID];
-    if (!sub) {
-      // Silently exit when the watchID is invalid or already cleared
-      return;
-    }
-    sub.remove(); // removes the listener
-    barometerSubscriptions[watchID] = undefined;
-    // check for any remaining watchers
-    let noWatchers = true;
-    for (let ii = 0; ii < barometerSubscriptions.length; ii++) {
-      if (barometerSubscriptions[ii]) {
-        noWatchers = false; // still valid watchers
-      }
-    }
-    if (noWatchers) {
-      RNBarometer.stopObserving();
-      barometerUpdatesEnabled = false;
-    }
+  clearWatch: function (watchID) {
+    watchManager.clearWatch(
+      watchID,
+      sub => sub.remove(),
+      () => NativeRNBarometer.stopObserving(),
+    );
   },
 
-  // Stop all watching/observing
-  stopObserving: function() {
-    let ii = 0;
-    RNBarometer.stopObserving();
-    for (ii = 0; ii < barometerSubscriptions.length; ii++) {
-      const sub = barometerSubscriptions[ii];
-      if (sub) {
-        sub.remove();
-      }
-    }
-    barometerSubscriptions = [];
-    barometerUpdatesEnabled = false;
+  stopObserving: function () {
+    watchManager.stopAll(
+      sub => sub.remove(),
+      () => NativeRNBarometer.stopObserving(),
+    );
   },
 
-  // Indicates if barometer updates are available on this device
-  isSupported: async function() {
-    return await RNBarometer.isSupported();
+  isSupported: async function () {
+    return await NativeRNBarometer.isSupported();
   },
 
-  // Sets the interval between event samples
-  setInterval: function(interval) {
-    RNBarometer.setInterval(interval);
-    if(barometerUpdatesEnabled) {
-      RNBarometer.stopObserving();
-      RNBarometer.startObserving();
-    }
+  setInterval: function (interval) {
+    NativeRNBarometer.setInterval(clampInterval(interval));
   },
 
-  // Sets the local air pressure in hPA/Millibars
-  setLocalPressure: function(pressure) {
-    RNBarometer.setLocalPressure(pressure);
-  }
-
+  setLocalPressure: function (pressure) {
+    NativeRNBarometer.setLocalPressure(validatePressure(pressure));
+  },
 };
 
 export default Barometer;
-

@@ -1,12 +1,24 @@
 {
   "name": "react-native-barometer",
   "title": "React Native Barometer",
-  "version": "1.0.16",
+  "version": "2.0.0",
   "description": "Obtain barometric and altitude readings for both Android and iOS",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test __tests__/**/*.test.js"
   },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src",
+    "android",
+    "ios",
+    "react-native-barometer.podspec",
+    "react-native.config.js",
+    "!ios/RNBarometer.xcodeproj",
+    "!ios/RNBarometer.xcworkspace"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dpyeates/react-native-barometer.git",
@@ -29,12 +41,30 @@
   "license": "MIT",
   "licenseFilename": "LICENSE",
   "readmeFilename": "README.md",
+  "engines": {
+    "node": ">=20"
+  },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=19",
+    "react-native": ">=0.84 <0.86"
   },
   "devDependencies": {
-    "react": "^16.8.3",
-    "react-native": "^0.59.10"
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "react-native": "0.85.0",
+    "typescript": "^5.8.0"
+  },
+  "codegenConfig": {
+    "name": "RNBarometerSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.sensorworks.RNBarometer"
+    },
+    "ios": {
+      "modulesProvider": {
+        "RNBarometer": "RNBarometer"
+      }
+    }
   }
 }

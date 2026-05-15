@@ -6,21 +6,24 @@ Pod::Spec.new do |s|
   s.name         = "react-native-barometer"
   s.version      = package["version"]
   s.summary      = package["description"]
-  s.description  = <<-DESC
-                  react-native-barometer
-                   DESC
+  s.description  = package["description"]
   s.homepage     = "https://github.com/dpyeates/react-native-barometer"
   s.license      = "MIT"
-  # s.license    = { :type => "MIT", :file => "FILE_LICENSE" }
   s.authors      = { "Darren Yeates" => "apps@sensorworks.co.uk" }
-  s.platforms    = { :ios => "9.0", :tvos => "10.0" }
+  s.platforms    = { :ios => "15.1" }
   s.source       = { :git => "https://github.com/dpyeates/react-native-barometer.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/**/*.{h,m,swift}"
+  s.source_files = "ios/**/*.{h,m,mm}"
   s.requires_arc = true
+  s.frameworks = "CoreMotion"
 
-  s.dependency "React-Core"
-	
-  # s.dependency "..."
+  s.pod_target_xcconfig = {
+    "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
+  }
+
+  if respond_to?(:install_modules_dependencies, true)
+    install_modules_dependencies(s)
+  else
+    s.dependency "React-Core"
+  end
 end
-

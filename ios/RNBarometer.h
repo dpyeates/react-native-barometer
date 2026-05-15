@@ -1,18 +1,17 @@
-#import <React/RCTBridgeModule.h>
-#import <React/RCTEventEmitter.h>
+#import <RNBarometerSpec/RNBarometerSpec.h>
 #import <CoreMotion/CoreMotion.h>
 
-@interface RNBarometer : RCTEventEmitter <RCTBridgeModule> {
-    CMAltimeter *altimeter;
-    NSOperationQueue *altimeterQueue;
-    bool isRunning;
-    bool isSupported;
-    long intervalMillis;
-    long long lastSampleTime;
-    double localPressurehPa;
-    double rawPressure;
-    double altitudeASL;
-    double altitude;
+@interface RNBarometer : NativeRNBarometerSpecBase <NativeRNBarometerSpec> {
+  CMAltimeter *altimeter;
+  NSOperationQueue *altimeterQueue;
+  BOOL wantsObserving;
+  BOOL isRunning;
+  NSInteger intervalMillis;
+  long long lastEmitTime;
+  double localPressurehPa;
+  double rawPressure;
+  double altitudeASL;
+  double altitude;
 }
 
 @end
