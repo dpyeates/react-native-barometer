@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepare": "npm run build",
-    "test": "npm run build && node --test __tests__/**/*.test.js",
+    "test": "npm run build && node --test __tests__/validation.test.js __tests__/watchManager.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "files": [
