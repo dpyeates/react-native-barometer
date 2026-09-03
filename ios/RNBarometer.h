@@ -12,6 +12,9 @@
   double rawPressure;
   double altitudeASL;
   double altitude;
+  double pressFilteringFactor;
+  BOOL hasPendingAltitudeReference;
+  double pendingAltitudeReferenceMetres;
 }
 
 @end

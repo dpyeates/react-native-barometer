@@ -1,16 +1,25 @@
 {
   "name": "react-native-barometer",
   "title": "React Native Barometer",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Obtain barometric and altitude readings for both Android and iOS",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "test": "node --test __tests__/**/*.test.js"
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "test": "npm run build && node --test __tests__/**/*.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "files": [
-    "index.js",
-    "index.d.ts",
+    "lib",
     "src",
     "android",
     "ios",
@@ -29,7 +38,9 @@
     "pressure",
     "altitude",
     "vertical speed",
-    "barometer"
+    "barometer",
+    "turbo-module",
+    "new-architecture"
   ],
   "author": {
     "name": "Darren Yeates",
@@ -45,8 +56,8 @@
     "node": ">=20"
   },
   "peerDependencies": {
-    "react": ">=19",
-    "react-native": ">=0.84 <0.86"
+    "react": "*",
+    "react-native": ">=0.84"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
@@ -66,5 +77,6 @@
         "RNBarometer": "RNBarometer"
       }
     }
-  }
+  },
+  "sideEffects": false
 }

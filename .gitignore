@@ -8,6 +8,9 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# Build output
+lib/
+
 # Xcode
 #
 build/
@@ -46,5 +49,6 @@ example/node_modules/
 example/ios/Pods/
 example/ios/build/
 example/android/build/
+example/android/app/build/
 example/android/.gradle/
 example/vendor/
