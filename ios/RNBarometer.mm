@@ -18,6 +18,20 @@ static NSInteger clampIntervalMillis(double interval) {
   return ms;
 }
 
+static NSString *authorizationStatusString(CMAuthorizationStatus status) {
+  switch (status) {
+    case CMAuthorizationStatusDenied:
+      return @"denied";
+    case CMAuthorizationStatusRestricted:
+      return @"restricted";
+    case CMAuthorizationStatusAuthorized:
+      return @"authorized";
+    case CMAuthorizationStatusNotDetermined:
+    default:
+      return @"notDetermined";
+  }
+}
+
 @implementation RNBarometer
 
 - (instancetype)init {
@@ -28,8 +42,11 @@ static NSInteger clampIntervalMillis(double interval) {
     [altimeterQueue setName:@"DeviceAltitude"];
     [altimeterQueue setMaxConcurrentOperationCount:1];
     localPressurehPa = STANDARD_ATMOSPHERE;
-    rawPressure = 0;
+    filteredPressure = 0;
     altitudeASL = 0;
+    altitude = 0;
+    relativeAltitudeOffset = 0;
+    lastRelativeAltitudeRaw = 0;
     lastEmitTime = 0;
     intervalMillis = 200;
     wantsObserving = NO;
@@ -50,6 +67,7 @@ static NSInteger clampIntervalMillis(double interval) {
 
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [self endAltimeterUpdates];
 }
 
 - (void)handleAppDidEnterBackground {
@@ -68,14 +86,13 @@ static NSInteger clampIntervalMillis(double interval) {
   resolve(@([CMAltimeter isRelativeAltitudeAvailable]));
 }
 
+- (void)getAuthorizationStatus:(RCTPromiseResolveBlock)resolve
+                        reject:(RCTPromiseRejectBlock)reject {
+  resolve(authorizationStatusString([CMAltimeter authorizationStatus]));
+}
+
 - (void)setInterval:(double)interval {
   intervalMillis = clampIntervalMillis(interval);
-  BOOL shouldStart = wantsObserving;
-  [self endAltimeterUpdates];
-  wantsObserving = shouldStart;
-  if (shouldStart) {
-    [self beginAltimeterUpdates];
-  }
 }
 
 - (void)setLocalPressure:(double)pressurehPa {
@@ -84,7 +101,19 @@ static NSInteger clampIntervalMillis(double interval) {
   }
 }
 
+- (void)resetRelativeAltitude {
+  relativeAltitudeOffset = lastRelativeAltitudeRaw;
+}
+
 - (void)startObserving {
+  CMAuthorizationStatus status = [CMAltimeter authorizationStatus];
+  if (status == CMAuthorizationStatusDenied || status == CMAuthorizationStatusRestricted) {
+    [self emitOnBarometerError:@{
+      @"code" : @"unauthorized",
+      @"message" : @"Motion permission is denied or restricted.",
+    }];
+    return;
+  }
   wantsObserving = YES;
   [self beginAltimeterUpdates];
 }
@@ -99,6 +128,9 @@ static NSInteger clampIntervalMillis(double interval) {
     return;
   }
 
+  relativeAltitudeOffset = 0;
+  lastRelativeAltitudeRaw = 0;
+
   __weak RNBarometer *weakSelf = self;
   [altimeter startRelativeAltitudeUpdatesToQueue:altimeterQueue
                                      withHandler:^(CMAltitudeData *_Nullable altitudeData, NSError *_Nullable error) {
@@ -108,7 +140,10 @@ static NSInteger clampIntervalMillis(double interval) {
                                        }
 
                                        if (error != nil) {
-                                         NSLog(@"RNBarometer: altimeter error: %@", error.localizedDescription);
+                                         [strongSelf emitOnBarometerError:@{
+                                           @"code" : @"altimeter_error",
+                                           @"message" : error.localizedDescription ?: @"Altimeter error",
+                                         }];
                                          [strongSelf endAltimeterUpdates];
                                          strongSelf->wantsObserving = NO;
                                          return;
@@ -128,16 +163,20 @@ static NSInteger clampIntervalMillis(double interval) {
                                        double lastAltitudeASL = strongSelf->altitudeASL;
                                        double pressureReading = altitudeData.pressure.doubleValue * 10.0;
                                        if (strongSelf->lastEmitTime == 0) {
-                                         strongSelf->rawPressure = pressureReading;
+                                         strongSelf->filteredPressure = pressureReading;
                                        } else {
-                                         strongSelf->rawPressure =
+                                         strongSelf->filteredPressure =
                                            pressureReading * PRESS_FILTERING_FACTOR +
-                                           strongSelf->rawPressure * (1.0 - PRESS_FILTERING_FACTOR);
+                                           strongSelf->filteredPressure * (1.0 - PRESS_FILTERING_FACTOR);
                                        }
                                        strongSelf->altitudeASL =
-                                         getAltitude(STANDARD_ATMOSPHERE, strongSelf->rawPressure);
+                                         getAltitude(STANDARD_ATMOSPHERE, strongSelf->filteredPressure);
                                        strongSelf->altitude =
-                                         getAltitude(strongSelf->localPressurehPa, strongSelf->rawPressure);
+                                         getAltitude(strongSelf->localPressurehPa, strongSelf->filteredPressure);
+
+                                       double relativeRaw = altitudeData.relativeAltitude.doubleValue;
+                                       strongSelf->lastRelativeAltitudeRaw = relativeRaw;
+                                       double relativeAltitude = relativeRaw - strongSelf->relativeAltitudeOffset;
 
                                        double verticalSpeed = 0;
                                        if (strongSelf->lastEmitTime > 0 && timeSinceLastEmit > 0) {
@@ -148,10 +187,10 @@ static NSInteger clampIntervalMillis(double interval) {
 
                                        [strongSelf emitOnBarometerUpdate:@{
                                          @"timestamp" : @(tempMs),
-                                         @"pressure" : @(strongSelf->rawPressure),
+                                         @"pressure" : @(strongSelf->filteredPressure),
                                          @"altitudeASL" : @(strongSelf->altitudeASL),
                                          @"altitude" : @(strongSelf->altitude),
-                                         @"relativeAltitude" : altitudeData.relativeAltitude,
+                                         @"relativeAltitude" : @(relativeAltitude),
                                          @"verticalSpeed" : @(verticalSpeed),
                                        }];
 
@@ -165,9 +204,11 @@ static NSInteger clampIntervalMillis(double interval) {
     return;
   }
   [altimeter stopRelativeAltitudeUpdates];
-  rawPressure = 0;
+  filteredPressure = 0;
   altitudeASL = 0;
   altitude = 0;
+  relativeAltitudeOffset = 0;
+  lastRelativeAltitudeRaw = 0;
   lastEmitTime = 0;
   isRunning = NO;
 }

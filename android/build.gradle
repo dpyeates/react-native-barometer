@@ -7,7 +7,7 @@ buildscript {
     gradlePluginPortal()
   }
   dependencies {
-    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${safeExtGet('kotlinVersion', '2.0.21')}")
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${safeExtGet('kotlinVersion', '2.2.0')}")
   }
 }
 
@@ -27,11 +27,11 @@ react {
 android {
   namespace "com.sensorworks.RNBarometer"
 
-  compileSdkVersion safeExtGet("compileSdkVersion", 35)
+  compileSdkVersion safeExtGet("compileSdkVersion", 37)
 
   defaultConfig {
     minSdkVersion safeExtGet("minSdkVersion", 24)
-    targetSdkVersion safeExtGet("targetSdkVersion", 35)
+    targetSdkVersion safeExtGet("targetSdkVersion", 36)
   }
 
   lintOptions {

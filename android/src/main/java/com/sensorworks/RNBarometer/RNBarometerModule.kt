@@ -5,7 +5,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
@@ -23,7 +22,7 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
   private var intervalMillis = DEFAULT_INTERVAL_MS
   private var lastEmitTime: Long = 0
   private var baselineAltitude: Double? = null
-  private var rawPressure = 0.0
+  private var filteredPressure = 0.0
   private var altitudeASL = 0.0
   private var localPressurehPa = SensorManager.PRESSURE_STANDARD_ATMOSPHERE.toDouble()
 
@@ -33,7 +32,14 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
 
   override fun getName(): String = NAME
 
-  override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+  override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+    if (accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
+      val map = Arguments.createMap()
+      map.putString("code", "unreliable")
+      map.putString("message", "Pressure sensor accuracy is unreliable.")
+      emitOnBarometerError(map)
+    }
+  }
 
   override fun onHostResume() {
     if (isRunning && pressureSensor != null) {
@@ -55,12 +61,15 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
     promise.resolve(pressureSensor != null)
   }
 
+  override fun getAuthorizationStatus(promise: Promise) {
+    promise.resolve("authorized")
+  }
+
   override fun setInterval(interval: Double) {
     intervalMillis = clampIntervalMillis(interval)
-    val shouldStart = isRunning
-    stopObserving()
-    if (shouldStart) {
-      startObserving()
+    if (isRunning && pressureSensor != null) {
+      sensorManager.unregisterListener(this)
+      sensorManager.registerListener(this, pressureSensor, intervalMillis * 1000)
     }
   }
 
@@ -70,9 +79,18 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun resetRelativeAltitude() {
+    if (lastEmitTime > 0) {
+      baselineAltitude = altitudeASL
+    }
+  }
+
   override fun startObserving() {
     if (pressureSensor == null) {
-      Log.w(NAME, "Pressure sensor not available; will not provide barometer data.")
+      val map = Arguments.createMap()
+      map.putString("code", "no_sensor")
+      map.putString("message", "Pressure sensor not available.")
+      emitOnBarometerError(map)
       return
     }
     baselineAltitude = null
@@ -83,7 +101,7 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
 
   override fun stopObserving() {
     sensorManager.unregisterListener(this)
-    rawPressure = 0.0
+    filteredPressure = 0.0
     altitudeASL = 0.0
     lastEmitTime = 0
     baselineAltitude = null
@@ -99,16 +117,16 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
 
     val lastAltitudeASL = altitudeASL
     val pressureReading = sensorEvent.values[0].toDouble()
-    rawPressure =
+    filteredPressure =
       if (lastEmitTime == 0L) {
         pressureReading
       } else {
         pressureReading * PRESS_FILTERING_FACTOR +
-          rawPressure * (1.0 - PRESS_FILTERING_FACTOR)
+          filteredPressure * (1.0 - PRESS_FILTERING_FACTOR)
       }
     altitudeASL =
-      getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE.toDouble(), rawPressure)
-    val altitude = getAltitude(localPressurehPa, rawPressure)
+      getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE.toDouble(), filteredPressure)
+    val altitude = getAltitude(localPressurehPa, filteredPressure)
 
     val baseline = baselineAltitude
     val relativeAltitude =
@@ -128,7 +146,7 @@ class RNBarometerModule(reactContext: ReactApplicationContext) :
 
     val map: WritableMap = Arguments.createMap()
     map.putDouble("timestamp", tempMs.toDouble())
-    map.putDouble("pressure", rawPressure)
+    map.putDouble("pressure", filteredPressure)
     map.putDouble("altitudeASL", altitudeASL)
     map.putDouble("altitude", altitude)
     map.putDouble("relativeAltitude", relativeAltitude)

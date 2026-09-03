@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "module": "esnext",
     "lib": ["es2019"],
     "allowJs": true,
     "jsx": "react-native",
     "noEmit": true,
     "isolatedModules": true,
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "customConditions": ["react-native"],
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src", "index.ts"]
 }

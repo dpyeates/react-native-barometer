@@ -7,7 +7,7 @@ Provides barometric and altitude information for React Native apps on iOS and An
 
 ## Requirements (v2.0.0+)
 
-- **React Native** `>=0.84 <0.86` with **React 19**
+- **React Native** `>=0.84` with **React 19**
 - **New Architecture only** — not compatible with the legacy bridge
 - **iOS** 15.1+
 - **Android** API 24+ (minSdk 24)
@@ -39,7 +39,7 @@ Add **Core Motion** usage text to your app’s `Info.plist` (required for `CMAlt
 
 ### Example app
 
-This repository includes an example app under [`example/`](example/) (React Native 0.85, New Architecture):
+This repository includes an example app under [`example/`](example/) (React Native 0.87, New Architecture):
 
 ```bash
 cd example
@@ -50,20 +50,48 @@ npx react-native run-ios
 npx react-native run-android
 ```
 
+The example exercises live `useBarometer` start/stop, interval presets, `resetRelativeAltitude()`, `getCurrentReading()`, authorization status, error banners, QNH calibration, and `getAltitude()`.
+
 ## Usage
 
-Call `isSupported()` before `watch()` on devices where a barometer may be absent.
+Call `isSupported()` before watching on devices where a barometer may be absent.
 
-### Example
+### Hook
+
+```tsx
+import {useBarometer} from 'react-native-barometer';
+
+function PressureLabel() {
+  const {payload, error, supported, start, stop} = useBarometer({
+    autoStart: true,
+    interval: 200,
+  });
+
+  if (supported === false) {
+    return null;
+  }
+  if (error) {
+    return <Text>{error.message}</Text>;
+  }
+  return <Text>{payload?.pressure.toFixed(2)} hPa</Text>;
+}
+```
+
+### Imperative API
 
 ```javascript
 import Barometer, {STANDARD_PRESSURE_HPA} from 'react-native-barometer';
 
 const supported = await Barometer.isSupported();
 if (supported) {
-  const watchId = Barometer.watch(payload => {
-    console.log(payload.pressure, payload.relativeAltitude);
-  });
+  const watchId = Barometer.watch(
+    payload => {
+      console.log(payload.pressure, payload.relativeAltitude);
+    },
+    error => {
+      console.warn(error.code, error.message);
+    },
+  );
 }
 ```
 
@@ -75,23 +103,30 @@ if (supported) {
 | `pressure` | Filtered air pressure in hPa (EMA-smoothed on both platforms) |
 | `altitudeASL` | Altitude in metres from the standard atmosphere (1013.25 hPa) |
 | `altitude` | Altitude in metres using `setLocalPressure()` as sea-level reference |
-| `relativeAltitude` | Change since observing started — Core Motion on iOS; computed baseline on Android |
+| `relativeAltitude` | Change since observing started, or since the last `resetRelativeAltitude()` |
 | `verticalSpeed` | Rate of change of `altitudeASL` over the emit interval (m/s), zero on the first sample |
 
-`setInterval(ms)` is clamped to a minimum of **50 ms**. `setLocalPressure(hPa)` ignores non-positive values and falls back to 1013.25 hPa.
+`setInterval(ms)` is clamped to a minimum of **`MIN_INTERVAL_MS` (50)**. Default is **`DEFAULT_INTERVAL_MS` (200)**. `setLocalPressure(hPa)` ignores non-positive values and falls back to `STANDARD_PRESSURE_HPA` (1013.25).
 
-TypeScript types are available via `index.d.ts` (`BarometerPayload`, etc.).
+TypeScript types ship as `lib/index.d.ts`. React Native codegen still reads the specs in `src/`.
+
+Interval is an emit throttle (and Android sampling hint). Changing it does **not** reset relative altitude. iOS relative altitude still resets if Core Motion is restarted, including when the app returns from background.
 
 ## Methods
 
 ### Summary
 
 * [`isSupported`](#issupported)
+* [`getAuthorizationStatus`](#getauthorizationstatus)
 * [`setInterval`](#setinterval)
 * [`setLocalPressure`](#setlocalpressure)
+* [`resetRelativeAltitude`](#resetrelativealtitude)
+* [`getCurrentReading`](#getcurrentreading)
 * [`watch`](#watch)
 * [`clearWatch`](#clearwatch)
 * [`stopObserving`](#stopobserving)
+* [`useBarometer`](#usebarometer)
+* [`getAltitude`](#getaltitude)
 
 ---
 
@@ -105,6 +140,19 @@ Before using, check to see if barometric updates are supported on the device.
 const isSupported = await Barometer.isSupported();
 ```
 
+On iOS this is `CMAltimeter.isRelativeAltitudeAvailable`. Motion permission can still be denied — see `getAuthorizationStatus()`.
+
+---
+
+#### `getAuthorizationStatus()`
+
+```javascript
+const status = await Barometer.getAuthorizationStatus();
+// 'notDetermined' | 'denied' | 'restricted' | 'authorized'
+```
+
+On iOS this maps `CMAltimeter.authorizationStatus`. Android has no barometer permission and always returns `'authorized'`.
+
 ---
 
 #### `setInterval()`
@@ -112,7 +160,8 @@ const isSupported = await Barometer.isSupported();
 Optionally request an update interval in ms. The default update rate is (approx) 200ms, i.e. 5Hz.
 
 ```javascript
-// request updates once every second
+import {DEFAULT_INTERVAL_MS, MIN_INTERVAL_MS} from 'react-native-barometer';
+
 Barometer.setInterval(1000);
 ```
 
@@ -123,8 +172,27 @@ Barometer.setInterval(1000);
 The altitude event contains two altitudes. The first is the standard atmosphere altitude based upon the standard atmospheric pressure of 1013.25hPa. The second is an altitude based upon a pressure that you can configure. You typically use this to calibrate the altitude to a reference altitude, for example the field elevation of an airport.
 
 ```javascript
-// set the local pressure to 985hPa
 Barometer.setLocalPressure(985);
+```
+
+---
+
+#### `resetRelativeAltitude()`
+
+Sets the current altitude as the zero point for `relativeAltitude` without stopping the sensor.
+
+```javascript
+Barometer.resetRelativeAltitude();
+```
+
+---
+
+#### `getCurrentReading()`
+
+Starts observing if needed, resolves with the next payload, then removes that one-shot watch.
+
+```javascript
+const payload = await Barometer.getCurrentReading();
 ```
 
 ---
@@ -132,11 +200,13 @@ Barometer.setLocalPressure(985);
 #### `watch()`
 
 ```javascript
-Barometer.watch(success);
+Barometer.watch(success, error);
 ```
 
 Invokes the success callback whenever the pressure or altitude changes.
-The payload delivered via the callback is defined in the example below.
+The optional error callback receives `{ code, message }`.
+
+Fatal codes (`no_sensor`, `unauthorized`, `altimeter_error`) stop observing for every watcher. `unreliable` (Android accuracy) is reported but observing continues.
 
 Returns a `watchId` (number).
 
@@ -144,21 +214,20 @@ Returns a `watchId` (number).
 
 | Name    | Type     | Required | Description |
 | ------- | -------- | -------- | ----------- |
-| success | function | Yes      | Invoked at a default interval of 5hz. This can be changed by using the setInterval method. |
+| success | function | Yes      | Invoked at a default interval of 5Hz. Change with `setInterval`. |
+| error   | function | No       | Invoked when the native layer reports an error. |
 
 **Example:**
 
 ```javascript
-const watchId = Barometer.watch(payload => {
-  /*
-  payload.timestamp - sample time in ms referenced to January 1, 1970 UTC
-  payload.pressure - current air pressure in hPa
-  payload.altitudeASL - altitude in metres based upon standard atmosphere
-  payload.altitude - altitude in metres based upon the local pressure
-  payload.relativeAltitude - change since observing started (see table above).
-  payload.verticalSpeed - change in altitudeASL over the emit interval (m/s)
-  */
-});
+const watchId = Barometer.watch(
+  payload => {
+    console.log(payload.pressure, payload.relativeAltitude);
+  },
+  error => {
+    console.warn(error.code, error.message);
+  },
+);
 ```
 
 ---
@@ -183,8 +252,38 @@ Barometer.clearWatch(watchID);
 Barometer.stopObserving();
 ```
 
-Stops observing for all barometric updates.
+Stops observing for all barometric updates and removes every listener.
 
-In addition, it removes all listeners previously registered.
+Updates are paused while the app is in the background and resume on foreground if observing is still requested.
 
-Note that this method does nothing if the `Barometer.watch(successCallback)` method has not previously been called.
+---
+
+#### `useBarometer()`
+
+React hook over the same singleton as `watch()`.
+
+```ts
+const {
+  payload,
+  error,
+  supported,
+  authorizationStatus,
+  observing,
+  start,
+  stop,
+} = useBarometer({autoStart: true, interval: 200});
+```
+
+`autoStart` defaults to `true` and only starts when `isSupported()` is true. Unmount calls `clearWatch`.
+
+---
+
+#### `getAltitude()`
+
+Pure helper for the same barometric formula used natively:
+
+```javascript
+import {getAltitude, STANDARD_PRESSURE_HPA} from 'react-native-barometer';
+
+const metres = getAltitude(STANDARD_PRESSURE_HPA, 1000);
+```

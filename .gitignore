@@ -46,5 +46,12 @@ example/node_modules/
 example/ios/Pods/
 example/ios/build/
 example/android/build/
+example/android/app/build/
 example/android/.gradle/
 example/vendor/
+example/**/.xcode.env.local
+example/.metro-health-check*
+example/coverage/
+
+# Compiled package entry
+lib/

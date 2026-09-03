@@ -9,9 +9,11 @@
   NSInteger intervalMillis;
   long long lastEmitTime;
   double localPressurehPa;
-  double rawPressure;
+  double filteredPressure;
   double altitudeASL;
   double altitude;
+  double relativeAltitudeOffset;
+  double lastRelativeAltitudeRaw;
 }
 
 @end
